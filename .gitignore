@@ -1,0 +1,57 @@
+# Python cache and bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# Data directory and datasets
+data/
+*.csv
+*.parquet
+*.feather
+*.xlsx
+
+# Trained ML Models and Checkpoints
+models/
+*.pkl
+*.joblib
+*.h5
+*.pb
+*.onnx
+*.pt
+*.pth
+*.ckpt
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Environment files & secrets
+.env
+.env.*
+
+# IDEs, Editors & OS files
+.vscode/
+.idea/
+.DS_Store
+*.swp
+*.swo
+
+# Logs, Coverage, and Build artifacts
+*.log
+logs/
+coverage/
+htmlcov/
+dist/
+build/
+*.egg-info/
+
+# Node / Web dependencies (if applicable)
+node_modules/
+npm-debug.log
+yarn-error.log
+*.sqlite3

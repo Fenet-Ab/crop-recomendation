@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ethiopian Crop Recommendation System</title>
+    <style>
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #0f5132, #198754);
+        color: #fff;
+        margin: 0;
+        padding: 20px;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .container {
+        background: rgba(255, 255, 255, 0.95);
+        color: #333;
+        border-radius: 20px;
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+        padding: 40px;
+        max-width: 650px;
+        width: 100%;
+      }
+      h1 {
+        text-align: center;
+        color: #198754;
+        margin-bottom: 10px;
+      }
+      p.subtitle {
+        text-align: center;
+        color: #666;
+        margin-bottom: 30px;
+      }
+      .form-group {
+        margin-bottom: 20px;
+      }
+      label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: bold;
+        color: #0f5132;
+      }
+      input,
+      select {
+        width: 100%;
+        padding: 12px;
+        border: 2px solid #ddd;
+        border-radius: 10px;
+        font-size: 16px;
+        transition: border 0.3s;
+        background: #fff;
+      }
+      input:focus,
+      select:focus {
+        border-color: #198754;
+        outline: none;
+      }
+      button {
+        background: #198754;
+        color: white;
+        border: none;
+        padding: 15px;
+        width: 100%;
+        border-radius: 10px;
+        font-size: 18px;
+        cursor: pointer;
+        transition: background 0.3s;
+      }
+      button:hover {
+        background: #146c43;
+      }
+      #result {
+        margin-top: 30px;
+        padding: 20px;
+        background: #d4edda;
+        border-radius: 10px;
+        display: none;
+      }
+      .crop-rec {
+        font-size: 28px;
+        font-weight: bold;
+        color: #0f5132;
+        text-align: center;
+      }
+      .crop-list {
+        font-size: 18px;
+        color: #0f5132;
+        text-align: center;
+        margin: 15px 0;
+        font-style: italic;
+      }
+      .explanation {
+        font-size: 16px;
+        color: #333;
+        text-align: center;
+        margin: 15px 0;
+      }
+      .top3 {
+        margin-top: 20px;
+      }
+      .top-item {
+        margin: 15px 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 18px;
+      }
+      .progress {
+        height: 28px;
+        background: #eee;
+        border-radius: 14px;
+        overflow: hidden;
+        flex: 1;
+        margin: 0 15px;
+      }
+      .progress-bar {
+        height: 100%;
+        background: #198754;
+        width: 0%;
+        transition: width 0.8s ease;
+      }
+      footer {
+        text-align: center;
+        margin-top: 30px;
+        color: #aaa;
+        font-size: 14px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🌾 Ethiopian Crop Recommender</h1>
+      <p class="subtitle">
+        Enter your farm's soil and climate data for personalized crop group
+        suggestions (based on real Ethiopian conditions)
+      </p>
+
+      <div class="form-group">
+        <label>Nitrogen (N, mg/kg)</label
+        ><input type="number" id="N" placeholder="e.g., 180" step="1" />
+      </div>
+      <div class="form-group">
+        <label>Phosphorus (P, mg/kg)</label
+        ><input type="number" id="P" placeholder="e.g., 40" step="1" />
+      </div>
+      <div class="form-group">
+        <label>Potassium (K, mg/kg)</label
+        ><input type="number" id="K" placeholder="e.g., 300" step="1" />
+      </div>
+      <div class="form-group">
+        <label>Soil pH</label
+        ><input type="number" id="ph" placeholder="e.g., 6.5" step="0.1" />
+      </div>
+      <div class="form-group">
+        <label>Average Temperature (°C)</label
+        ><input
+          type="number"
+          id="temperature"
+          placeholder="e.g., 22"
+          step="0.1"
+        />
+      </div>
+      <div class="form-group">
+        <label>Relative Humidity (%)</label
+        ><input type="number" id="humidity" placeholder="e.g., 65" step="0.1" />
+      </div>
+      <div class="form-group">
+        <label>Rainfall (seasonal sum)</label
+        ><input type="number" id="rainfall" placeholder="e.g., 25" step="0.1" />
+      </div>
+      <div class="form-group">
+        <label>Altitude (meters)</label
+        ><input
+          type="number"
+          id="altitude_m"
+          placeholder="e.g., 2400"
+          step="1"
+        />
+      </div>
+      <div class="form-group">
+        <label>Zinc (Zn)</label
+        ><input type="number" id="Zn" placeholder="e.g., 5" step="0.1" />
+      </div>
+      <div class="form-group">
+        <label>Sulfur (S)</label
+        ><input type="number" id="S" placeholder="e.g., 20" step="0.1" />
+      </div>
+      <div class="form-group">
+        <label>Soil Moisture (0-1)</label
+        ><input
+          type="number"
+          id="soil_moisture"
+          placeholder="e.g., 0.6"
+          step="0.01"
+        />
+      </div>
+      <div class="form-group">
+        <label>Soil Color</label>
+        <select id="soil_color">
+          <option value="brown">Brown</option>
+          <option value="red">Red</option>
+          <option value="black">Black</option>
+          <option value="gray">Gray</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+
+      <button onclick="predict()">Get Recommendation</button>
+
+      <div id="result">
+        <div class="crop-rec" id="recommended"></div>
+        <div class="crop-list" id="crop_list"></div>
+        <div class="explanation" id="explanation"></div>
+        <div
+          id="confidence"
+          style="text-align: center; font-size: 18px; margin: 10px 0"
+        ></div>
+        <div class="top3">
+          <h3>Top 3 Alternatives:</h3>
+          <div id="top3"></div>
+        </div>
+      </div>
+
+      <footer>
+        Made for Ethiopian Farmers 🇪🇹 | Real Data • Detailed Crop Groups
+      </footer>
+    </div>
+
+    <script>
+      async function predict() {
+        const data = {
+          N: parseFloat(document.getElementById("N").value),
+          P: parseFloat(document.getElementById("P").value),
+          K: parseFloat(document.getElementById("K").value),
+          ph: parseFloat(document.getElementById("ph").value),
+          temperature: parseFloat(document.getElementById("temperature").value),
+          humidity: parseFloat(document.getElementById("humidity").value),
+          rainfall: parseFloat(document.getElementById("rainfall").value),
+          altitude_m: parseFloat(document.getElementById("altitude_m").value),
+          Zn: parseFloat(document.getElementById("Zn").value),
+          S: parseFloat(document.getElementById("S").value),
+          soil_moisture: parseFloat(
+            document.getElementById("soil_moisture").value,
+          ),
+          soil_color: document.getElementById("soil_color").value,
+        };
+
+        const numericFields = { ...data };
+        delete numericFields.soil_color;
+        if (Object.values(numericFields).some((v) => isNaN(v))) {
+          alert("Please fill all fields with valid numbers");
+          return;
+        }
+
+        try {
+          const response = await fetch("/predict", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data),
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.detail || "Server error");
+          }
+
+          const result = await response.json();
+
+          document.getElementById("recommended").textContent =
+            "Recommended Group: " +
+            result.recommended_crop.toUpperCase() +
+            " 🌱";
+          document.getElementById("crop_list").textContent =
+            "(" + result.crops_in_group.join(", ") + ")";
+          document.getElementById("explanation").textContent =
+            result.explanation;
+          document.getElementById("confidence").textContent =
+            "Confidence: " + result.confidence_pct + "%";
+
+          const top3Div = document.getElementById("top3");
+          top3Div.innerHTML = "";
+          result.top3_recommendations.forEach(function (item) {
+            const div = document.createElement("div");
+            div.className = "top-item";
+            div.innerHTML =
+              "<span>" +
+              item.crop.toUpperCase() +
+              " (" +
+              item.crops_in_group.join(", ") +
+              ")</span>" +
+              '<div class="progress"><div class="progress-bar" style="width: ' +
+              item.probability_pct +
+              '%"></div></div>' +
+              "<span>" +
+              item.probability_pct +
+              "%</span>";
+            top3Div.appendChild(div);
+          });
+
+          document.getElementById("result").style.display = "block";
+        } catch (err) {
+          alert("Error: " + err.message);
+          console.error(err);
+        }
+      }
+    </script>
+  </body>
+</html>
