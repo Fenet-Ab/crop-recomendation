@@ -574,6 +574,50 @@
       font-size: 13px;
       margin-top: 28px;
     }
+
+    .sms-panel {
+      margin-top: 24px;
+      padding: 22px;
+      border: 1.5px solid #fde68a;
+      background: linear-gradient(180deg, #fffbeb, #fff);
+      border-radius: var(--radius-md);
+    }
+
+    .sms-panel h3 {
+      font-family: "Space Grotesk", sans-serif;
+      font-size: 1.1rem;
+      color: #92400e;
+      margin-bottom: 8px;
+    }
+
+    .sms-panel p.hint {
+      font-size: 13px;
+      color: #78716c;
+      margin-bottom: 16px;
+      line-height: 1.45;
+    }
+
+    textarea#smsPreview {
+      width: 100%;
+      min-height: 150px;
+      padding: 12px 14px;
+      border: 1.5px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      font-size: 14px;
+      line-height: 1.45;
+      background: #fff;
+      resize: vertical;
+      font-family: inherit;
+    }
+
+    .sms-status {
+      margin-top: 12px;
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .sms-status.ok { color: #166534; }
+    .sms-status.err { color: #991b1b; }
   </style>
 </head>
 
@@ -848,6 +892,84 @@
             <div class="warn-banner" id="u-fert-soil-notes"></div>
           </div>
         </div>
+
+        <div class="sms-panel" id="sms-panel">
+          <h3>📱 Send this recommendation by SMS (አማርኛ / Afaan Oromoo)</h3>
+          <p class="hint">
+            1) Recommend crop and fertilizer. 2) Select a farmer. 3) Preview the message in their language
+            (built from DAP/Urea). 4) Edit if needed, then send.
+          </p>
+
+          <div class="mini-stats-grid" style="margin-bottom: 16px">
+            <div class="mini-stat">
+              <div class="title">SMS crop</div>
+              <div class="val" id="smsCropLabel">—</div>
+            </div>
+            <div class="mini-stat">
+              <div class="title">DAP / Urea</div>
+              <div class="val" id="smsRatesLabel">Run fertilizer first</div>
+            </div>
+          </div>
+
+          <div class="form-grid-3">
+            <div class="field-group">
+              <label for="farmerSelect">Select farmer</label>
+              <select id="farmerSelect" onchange="refreshSmsPreview()">
+                <option value="">— Select farmer —</option>
+              </select>
+              <span class="field-hint" id="farmerLangHint">Language comes from the farmer profile (am or om)</span>
+            </div>
+            <div class="field-group">
+              <label for="sendToAllCheck">Who receives it</label>
+              <select id="sendToAllCheck" onchange="onBroadcastToggle()">
+                <option value="one" selected>Selected farmer only</option>
+                <option value="all">All registered farmers</option>
+              </select>
+              <span class="field-hint">Broadcast rebuilds each SMS in that farmer’s language (ignores edits)</span>
+            </div>
+            <div class="field-group">
+              <label>&nbsp;</label>
+              <button class="btn-action btn-fert" id="btn-preview-sms" type="button" onclick="refreshSmsPreview()" style="width:100%">
+                Preview in farmer language
+              </button>
+            </div>
+          </div>
+
+          <div class="field-group" style="margin-bottom: 14px">
+            <label for="smsPreview">Message to send (you can edit before sending to one farmer)</label>
+            <textarea id="smsPreview" placeholder="Select a farmer after fertilizer recommendation to preview the SMS."></textarea>
+            <span class="field-hint" id="smsCharCount">0 characters · Amharic uses extra SMS segments</span>
+          </div>
+
+          <div class="form-grid-3" style="margin-bottom: 12px">
+            <div class="field-group">
+              <label for="newFarmerName">Register farmer — name</label>
+              <input id="newFarmerName" type="text" placeholder="Abebe Kebede" />
+            </div>
+            <div class="field-group">
+              <label for="newFarmerPhone">Phone (09… or 2519…)</label>
+              <input id="newFarmerPhone" type="text" placeholder="0911234567" />
+            </div>
+            <div class="field-group">
+              <label for="newFarmerLang">Language</label>
+              <select id="newFarmerLang">
+                <option value="am">Amharic (አማርኛ)</option>
+                <option value="om">Afan Oromo (Afaan Oromoo)</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:flex; gap:10px; flex-wrap:wrap">
+            <button class="btn-action btn-crop" type="button" onclick="registerFarmer()" style="flex:1">
+              Save farmer
+            </button>
+            <button class="btn-action btn-both" type="button" id="btn-send-sms" onclick="dispatchSMS()" style="flex:2">
+              Send SMS now
+            </button>
+          </div>
+          <div class="sms-status" id="smsStatus"></div>
+          <div style="margin-top:16px; font-size:12px; font-weight:700; color:#334155">Recent SMS log</div>
+          <div id="smsLogList" style="font-size:12px; color:#475569; margin-top:6px"></div>
+        </div>
       </div>
 
       <!-- ================= TAB 2: STANDALONE CROP ================= -->
@@ -1033,7 +1155,9 @@
           </table>
         </div>
       </div>
+      
     </div>
+
 
     <footer>
       EthioSoil-AI • Built on Real Ethiopian Agricultural Trials & Soil Data • EIAR / Harvard Dataverse
@@ -1184,6 +1308,8 @@
 
     // Render functions
     function renderCropCard(data) {
+      window.lastCropGroup = data.recommended_crop;
+      window.lastConfidence = data.confidence_pct;
       document.getElementById("u-crop-title").textContent = data.recommended_crop.replace("_", " ");
       document.getElementById("u-crop-conf").textContent = data.confidence_pct + "% Confidence";
       document.getElementById("u-crop-members").textContent = "Crops in Group: " + data.crops_in_group.join(", ");
@@ -1293,6 +1419,7 @@
 
       document.getElementById("res-box-fert").classList.add("highlight");
       setTimeout(() => document.getElementById("res-box-fert").classList.remove("highlight"), 1200);
+      rememberFertilizer(data);
     }
 
     // Action 1: Predict Crop Suitability
@@ -1353,11 +1480,243 @@
       }
     }
 
-    // Initial baseline setup on load
+    window.lastRecommendation = {
+      crop_name: "",
+      crop_group: "",
+      dap_kg: 0,
+      urea_kg: 0,
+      n_kg: null,
+      p_kg: null,
+      is_legume: false,
+      confidence_pct: null,
+      splits: [],
+    };
+
+    function smsPayloadFromRec(rec, extra) {
+      return Object.assign(
+        {
+          crop_name: rec.crop_name,
+          crop_group: rec.crop_group,
+          dap_kg: rec.dap_kg,
+          urea_kg: rec.urea_kg,
+          n_kg: rec.n_kg,
+          p_kg: rec.p_kg,
+          is_legume: rec.is_legume,
+          confidence_pct: rec.confidence_pct,
+          splits: rec.splits || [],
+        },
+        extra || {}
+      );
+    }
+
+    function rememberFertilizer(data) {
+      if (!data || !data.commercial_products) return;
+      const urea = data.commercial_products.Urea || {};
+      const nutrients = data.nutrient_targets || {};
+      window.lastRecommendation = {
+        crop_name: data.crop || document.getElementById("u_target_crop").value,
+        crop_group: window.lastCropGroup || "",
+        dap_kg: data.commercial_products.DAP.rate_kg_ha,
+        urea_kg: urea.total_rate_kg_ha,
+        n_kg: nutrients.N_recommended_kg_ha,
+        p_kg: nutrients.P_recommended_kg_ha,
+        is_legume: !!data.is_legume,
+        confidence_pct: window.lastConfidence || null,
+        splits: urea.split_application || [],
+      };
+      document.getElementById("smsCropLabel").textContent = window.lastRecommendation.crop_name;
+      document.getElementById("smsRatesLabel").textContent =
+        window.lastRecommendation.dap_kg + " / " + window.lastRecommendation.urea_kg + " kg/ha";
+      refreshSmsPreview();
+    }
+
+    async function loadFarmers(selectId) {
+      const select = document.getElementById("farmerSelect");
+      const keep = selectId || select.value;
+      try {
+        const res = await fetch("/farmers/list");
+        if (!res.ok) throw new Error("Could not load farmers");
+        const farmers = await res.json();
+        select.innerHTML = '<option value="">— Select farmer —</option>';
+        farmers.forEach((f) => {
+          const opt = document.createElement("option");
+          opt.value = f.id;
+          opt.textContent = `${f.name} · ${f.phone} · ${(f.language || "").toUpperCase()} · ${f.region}`;
+          select.appendChild(opt);
+        });
+        if (keep) select.value = keep;
+      } catch (e) {
+        console.error(e);
+        setSmsStatus("Could not load farmers. Check DATABASE_URL / Supabase.", true);
+      }
+    }
+
+    function onBroadcastToggle() {
+      refreshSmsPreview();
+    }
+
+    function updateSmsCharCount() {
+      const text = document.getElementById("smsPreview").value || "";
+      const n = text.length;
+      const unicode = /[^\u0000-\u007f]/.test(text);
+      const perSeg = unicode ? 70 : 160;
+      const segs = n === 0 ? 0 : Math.ceil(n / perSeg);
+      document.getElementById("smsCharCount").textContent =
+        n + " characters · ~" + segs + " SMS segment(s)" + (unicode ? " (Amharic/Unicode)" : "");
+    }
+
+    async function refreshSmsPreview() {
+      const rec = window.lastRecommendation || {};
+      const farmerId = document.getElementById("farmerSelect").value;
+      const broadcast = document.getElementById("sendToAllCheck").value === "all";
+      const selected = document.getElementById("farmerSelect").selectedOptions[0];
+      document.getElementById("farmerLangHint").textContent = broadcast
+        ? "Broadcast: each farmer gets their own Amharic or Afan Oromo text"
+        : farmerId
+          ? "Preview language: " + (selected ? selected.textContent : "")
+          : "Select a farmer to preview አማርኛ or Afaan Oromoo";
+
+      if (!rec.dap_kg && !rec.urea_kg) {
+        document.getElementById("smsPreview").value = "";
+        updateSmsCharCount();
+        return;
+      }
+
+      try {
+        const res = await fetch("/farmers/preview-sms", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(
+            smsPayloadFromRec(rec, {
+              farmer_id: farmerId ? parseInt(farmerId, 10) : null,
+              language: farmerId ? null : "am",
+            })
+          ),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || "Preview failed");
+        document.getElementById("smsPreview").value = data.message;
+        updateSmsCharCount();
+      } catch (e) {
+        setSmsStatus(e.message, true);
+      }
+    }
+
+    async function registerFarmer() {
+      const full_name = document.getElementById("newFarmerName").value.trim();
+      const phone_number = document.getElementById("newFarmerPhone").value.trim();
+      const language_pref = document.getElementById("newFarmerLang").value;
+      const region = document.getElementById("u_adm1").value;
+      if (!full_name || !phone_number) {
+        setSmsStatus("Enter farmer name and phone number.", true);
+        return;
+      }
+      try {
+        const res = await fetch("/farmers/", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ full_name, phone_number, language_pref, region }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || "Register failed");
+        await loadFarmers(String(data.farmer.id));
+        document.getElementById("newFarmerName").value = "";
+        document.getElementById("newFarmerPhone").value = "";
+        setSmsStatus("Farmer saved. Previewing SMS…", false);
+        await refreshSmsPreview();
+      } catch (e) {
+        setSmsStatus(e.message, true);
+      }
+    }
+
+    async function dispatchSMS() {
+      const rec = window.lastRecommendation || {};
+      const farmerId = document.getElementById("farmerSelect").value;
+      const sendToAll = document.getElementById("sendToAllCheck").value === "all";
+      const preview = document.getElementById("smsPreview").value.trim();
+
+      if (!rec.dap_kg && !rec.urea_kg) {
+        setSmsStatus("Run Recommend Crop and Recommend Fertilizer first.", true);
+        return;
+      }
+      if (!sendToAll && !farmerId) {
+        setSmsStatus("Select a farmer, or choose broadcast to all.", true);
+        return;
+      }
+      if (!sendToAll && !preview) {
+        setSmsStatus("Preview is empty. Click Preview in farmer language first.", true);
+        return;
+      }
+
+      const who = sendToAll ? "ALL registered farmers (each in their own language)" : "the selected farmer";
+      if (!confirm("Send this fertilizer SMS to " + who + "?")) return;
+
+      const btn = document.getElementById("btn-send-sms");
+      btn.disabled = true;
+      setSmsStatus("Sending via SMSEthiopia…", false);
+      const payload = smsPayloadFromRec(rec, {
+        farmer_id: farmerId ? parseInt(farmerId, 10) : null,
+        send_to_all: sendToAll,
+        message_override: sendToAll ? null : preview,
+      });
+
+      try {
+        const response = await fetch("/farmers/send-sms", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.detail || "SMS failed");
+        const lines = (result.details || []).map(
+          (d) => `${d.ok ? "✔" : "✖"} ${d.farmer} (${d.language}) ${d.phone}`
+        );
+        setSmsStatus(
+          `Sent ${result.dispatched_count}/${result.attempted}.\n` + lines.join("\n"),
+          result.dispatched_count === 0
+        );
+        await loadSmsLogs();
+      } catch (err) {
+        setSmsStatus(err.message, true);
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function loadSmsLogs() {
+      const box = document.getElementById("smsLogList");
+      try {
+        const res = await fetch("/farmers/sms-logs?limit=8");
+        if (!res.ok) return;
+        const rows = await res.json();
+        if (!rows.length) {
+          box.textContent = "No SMS sent yet.";
+          return;
+        }
+        box.innerHTML = rows
+          .map(
+            (r) =>
+              `<div style="padding:6px 0;border-bottom:1px solid #f1f5f9">${r.sent_at || ""} · ${r.farmer || "?"} · ${r.crop_name || ""} · ${r.gateway_status}</div>`
+          )
+          .join("");
+      } catch (e) {
+        box.textContent = "";
+      }
+    }
+
+    function setSmsStatus(text, isError) {
+      const el = document.getElementById("smsStatus");
+      el.textContent = text;
+      el.className = "sms-status " + (isError ? "err" : "ok");
+    }
+
     window.addEventListener("DOMContentLoaded", () => {
       onRegionChange();
+      loadFarmers();
+      loadSmsLogs();
+      document.getElementById("smsPreview").addEventListener("input", updateSmsCharCount);
     });
-  </script>
+    </script>
 </body>
 
 </html>

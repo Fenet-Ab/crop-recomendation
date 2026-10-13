@@ -3,12 +3,16 @@ from pathlib import Path
 import joblib
 import numpy as np
 import pandas as pd
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-from typing import Optional
-
+from typing import Any, List, Optional
+from sqlalchemy.orm import Session, joinedload
+from src.database import Base, get_db, get_engine
+from src.models_db import Farmer, SmsLog
+from src.localization import build_sms_message
+from src.sms_service import normalize_msisdn, send_sms_notification
 from pydantic import BaseModel, Field
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -192,6 +196,13 @@ def load_models():
 
         print(f"Feature columns ({len(feature_cols)}): {feature_cols}")
         print("All models loaded successfully!")
+        try:
+            from src.seed import seed_data
+
+            seed_data()
+            print("Farmer SMS tables ready.")
+        except Exception as db_exc:
+            print(f"Farmer DB not available yet: {db_exc}")
     except Exception as e:
         print(f"CRITICAL: Failed to load models: {e}")
         raise RuntimeError(f"Model loading failed: {e}")
@@ -430,3 +441,213 @@ def health():
         "n_crop_features": len(feature_cols) if feature_cols else 0,
     }
 
+
+class FarmerCreate(BaseModel):
+    full_name: str = Field(..., min_length=2, example="Abebe Kebede")
+    phone_number: str = Field(..., example="0911234567")
+    region: str = Field("Oromia", example="Oromia")
+    language_pref: str = Field("am", description="am | om", example="am")
+
+
+class SmsPreviewRequest(BaseModel):
+    farmer_id: Optional[int] = None
+    language: Optional[str] = None
+    farmer_name: Optional[str] = "Farmer"
+    crop_name: str = "Wheat"
+    crop_group: Optional[str] = None
+    dap_kg: float = 0
+    urea_kg: float = 0
+    n_kg: Optional[float] = None
+    p_kg: Optional[float] = None
+    is_legume: bool = False
+    confidence_pct: Optional[float] = None
+    splits: Optional[List[dict[str, Any]]] = None
+
+
+class SendSmsRequest(BaseModel):
+    farmer_id: Optional[int] = None
+    send_to_all: bool = False
+    crop_name: str
+    crop_group: Optional[str] = None
+    dap_kg: float
+    urea_kg: float
+    n_kg: Optional[float] = None
+    p_kg: Optional[float] = None
+    is_legume: bool = False
+    confidence_pct: Optional[float] = None
+    splits: Optional[List[dict[str, Any]]] = None
+    message_override: Optional[str] = None
+
+
+def _farmer_dict(farmer: Farmer) -> dict:
+    return {
+        "id": farmer.id,
+        "name": farmer.full_name,
+        "phone": farmer.phone_number,
+        "language": farmer.language_pref,
+        "region": farmer.region,
+    }
+
+
+def _select_farmers(payload: SendSmsRequest, db: Session) -> list:
+    if payload.send_to_all:
+        return db.query(Farmer).all()
+    if payload.farmer_id:
+        farmer = db.query(Farmer).filter(Farmer.id == payload.farmer_id).first()
+        return [farmer] if farmer else []
+    return []
+
+
+@app.get("/farmers/list")
+def get_farmers_list(db: Session = Depends(get_db)):
+    try:
+        farmers = db.query(Farmer).order_by(Farmer.id).all()
+        return [_farmer_dict(f) for f in farmers]
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"Database unavailable: {exc}")
+
+
+@app.get("/farmers/sms-logs")
+def list_sms_logs(limit: int = 15, db: Session = Depends(get_db)):
+    logs = (
+        db.query(SmsLog)
+        .options(joinedload(SmsLog.farmer))
+        .order_by(SmsLog.sent_at.desc())
+        .limit(max(1, min(limit, 50)))
+        .all()
+    )
+    return [
+        {
+            "id": row.id,
+            "farmer_id": row.farmer_id,
+            "farmer": row.farmer.full_name if row.farmer else None,
+            "crop_name": row.crop_name,
+            "message_body": row.message_body,
+            "gateway_status": row.gateway_status,
+            "sent_at": row.sent_at.isoformat() if row.sent_at else None,
+        }
+        for row in logs
+    ]
+
+
+@app.post("/farmers/")
+def register_farmer(body: FarmerCreate, db: Session = Depends(get_db)):
+    phone = normalize_msisdn(body.phone_number)
+    if not phone.startswith("251"):
+        raise HTTPException(status_code=400, detail="Phone must be Ethiopian (09... or 2519...)")
+    existing = db.query(Farmer).filter(Farmer.phone_number == phone).first()
+    if existing:
+        raise HTTPException(status_code=409, detail="This phone number is already registered")
+    lang = (body.language_pref or "am").lower()
+    if lang not in ("am", "om", "en"):
+        lang = "am"
+    farmer = Farmer(
+        full_name=body.full_name.strip(),
+        phone_number=phone,
+        region=body.region.strip() or "Oromia",
+        language_pref=lang,
+    )
+    db.add(farmer)
+    db.commit()
+    db.refresh(farmer)
+    return {"status": "success", "farmer": _farmer_dict(farmer)}
+
+
+@app.post("/farmers/preview-sms")
+def preview_farmer_sms(payload: SmsPreviewRequest, db: Session = Depends(get_db)):
+    """Build the localized SMS from the latest crop/fertilizer result without sending."""
+    farmer = None
+    if payload.farmer_id:
+        farmer = db.query(Farmer).filter(Farmer.id == payload.farmer_id).first()
+        if not farmer:
+            raise HTTPException(status_code=404, detail="Farmer not found")
+    lang = farmer.language_pref if farmer else (payload.language or "am")
+    name = farmer.full_name if farmer else (payload.farmer_name or "Farmer")
+    message = build_sms_message(
+        lang=lang,
+        name=name,
+        crop=payload.crop_name,
+        dap_kg=payload.dap_kg,
+        urea_kg=payload.urea_kg,
+        crop_group=payload.crop_group,
+        splits=payload.splits,
+        is_legume=payload.is_legume,
+        confidence_pct=payload.confidence_pct,
+        n_kg=payload.n_kg,
+        p_kg=payload.p_kg,
+    )
+    return {
+        "language": lang,
+        "message": message,
+        "farmer": _farmer_dict(farmer) if farmer else None,
+        "crop_name": payload.crop_name,
+        "dap_kg": payload.dap_kg,
+        "urea_kg": payload.urea_kg,
+    }
+
+
+@app.post("/farmers/send-sms")
+def send_custom_recommendation_sms(payload: SendSmsRequest, db: Session = Depends(get_db)):
+    """Send the crop + Urea/DAP recommendation in the farmer's language (am/om)."""
+    if payload.dap_kg <= 0 and payload.urea_kg <= 0 and not payload.message_override:
+        raise HTTPException(
+            status_code=400,
+            detail="Run crop/fertilizer recommendation first so DAP and Urea rates are available.",
+        )
+
+    target_farmers = _select_farmers(payload, db)
+    if not target_farmers:
+        raise HTTPException(status_code=404, detail="No target farmers found")
+
+    results = []
+    sent = 0
+    for farmer in target_farmers:
+        edited = (payload.message_override or "").strip()
+        if edited and not payload.send_to_all:
+            msg = edited
+        else:
+            msg = build_sms_message(
+                lang=farmer.language_pref,
+                name=farmer.full_name,
+                crop=payload.crop_name,
+                dap_kg=payload.dap_kg,
+                urea_kg=payload.urea_kg,
+                crop_group=payload.crop_group,
+                splits=payload.splits,
+                is_legume=payload.is_legume,
+                confidence_pct=payload.confidence_pct,
+                n_kg=payload.n_kg,
+                p_kg=payload.p_kg,
+            )
+        gateway_res = send_sms_notification(farmer.phone_number, msg)
+        status_label = "success" if gateway_res.get("ok") else "error"
+        db.add(
+            SmsLog(
+                farmer_id=farmer.id,
+                crop_name=payload.crop_name,
+                message_body=msg,
+                gateway_status=status_label,
+            )
+        )
+        ok = bool(gateway_res.get("ok"))
+        if ok:
+            sent += 1
+        results.append(
+            {
+                "farmer": farmer.full_name,
+                "phone": farmer.phone_number,
+                "language": farmer.language_pref,
+                "ok": ok,
+                "message": msg,
+                "chars": len(msg),
+                "response": gateway_res,
+            }
+        )
+
+    db.commit()
+    return {
+        "status": "success" if sent else "error",
+        "dispatched_count": sent,
+        "attempted": len(results),
+        "details": results,
+    }
