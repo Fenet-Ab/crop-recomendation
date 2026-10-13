@@ -7,6 +7,8 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from typing import Optional
+
 from pydantic import BaseModel, Field
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -92,6 +94,34 @@ class CropInput(BaseModel):
         "brown",
         description="Soil color: black | brown | gray | red | other",
         example="brown",
+    )
+    adm1: str = Field(
+        "Oromia",
+        description="Administrative Region: Oromia | Amhara | Tigray | SNNPRS | Afar",
+        example="Oromia",
+    )
+    soil_type: str = Field(
+        "Vertisols",
+        description="Soil classification: Vertisols | Nitisols | Cambisols | Luvisols | Unknown",
+        example="Vertisols",
+    )
+    fertilizer_N: Optional[float] = Field(
+        64.0, ge=0, le=300, description="Elemental N applied kg/ha", example=64.0
+    )
+    fertilizer_P: Optional[float] = Field(
+        20.0, ge=0, le=100, description="Elemental P applied kg/ha", example=20.0
+    )
+    fertilizer_S: Optional[float] = Field(
+        7.0, ge=0, le=80, description="Elemental S applied kg/ha", example=7.0
+    )
+    fertilizer_K: Optional[float] = Field(
+        0.0, ge=0, le=100, description="Elemental K applied kg/ha", example=0.0
+    )
+    soil_SOC: Optional[float] = Field(
+        2.0, ge=0.1, le=10.0, description="Soil Organic Carbon %", example=2.0
+    )
+    soil_clay: Optional[float] = Field(
+        45.0, ge=0.0, le=100.0, description="Soil clay percentage %", example=45.0
     )
 
 
@@ -183,6 +213,127 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     return JSONResponse(status_code=422, content={"detail": friendly_message})
 
 
+from src.fertilizer_service import wheat_service, crop_fertilizer_recommender
+
+
+class FertilizerRequest(BaseModel):
+    N: float = Field(64.0, ge=0, le=300, description="Elemental Nitrogen applied (kg N/ha)", example=64.0)
+    P: float = Field(20.0, ge=0, le=100, description="Elemental Phosphorus applied (kg P/ha)", example=20.0)
+    K: float = Field(0.0, ge=0, le=100, description="Elemental Potassium applied (kg K/ha)", example=0.0)
+    S: float = Field(7.0, ge=0, le=80, description="Elemental Sulfur applied (kg S/ha)", example=7.0)
+    latitude: float = Field(8.5, ge=3.0, le=15.0, description="Latitude (°N)", example=8.5)
+    longitude: float = Field(39.2, ge=33.0, le=48.0, description="Longitude (°E)", example=39.2)
+    adm1: str = Field("Oromia", description="Administrative Region (Oromia, Amhara, Tigray, SNNPRS, Afar)", example="Oromia")
+    soil_pH: Optional[float] = Field(6.5, ge=3.5, le=9.5, description="Soil pH", example=6.5)
+    soil_SOC: Optional[float] = Field(2.0, ge=0.2, le=8.0, description="Soil Organic Carbon %", example=2.0)
+    soil_P: Optional[float] = Field(15.0, ge=0.0, le=100.0, description="Available Soil P (mg/kg / ppm)", example=15.0)
+    soil_clay: Optional[float] = Field(45.0, ge=0.0, le=100.0, description="Soil Clay %", example=45.0)
+    soil_sand: Optional[float] = Field(20.0, ge=0.0, le=100.0, description="Soil Sand %", example=20.0)
+    soil_type: str = Field("Vertisols", description="Soil type classification", example="Vertisols")
+    simulate_curve: bool = Field(True, description="Whether to include simulated N-response curve", example=True)
+
+
+@app.post("/recommend-fertilizer")
+def recommend_fertilizer(req: FertilizerRequest):
+    """Predict wheat grain yield and return commercial fertilizer recommendations and coverage notices."""
+    try:
+        pred_res = wheat_service.predict(
+            N=req.N,
+            P=req.P,
+            K=req.K,
+            S=req.S,
+            latitude=req.latitude,
+            longitude=req.longitude,
+            adm1=req.adm1,
+            soil_pH=req.soil_pH,
+            soil_SOC=req.soil_SOC,
+            soil_P=req.soil_P,
+            soil_clay=req.soil_clay,
+            soil_sand=req.soil_sand,
+            soil_type=req.soil_type,
+        )
+
+        curve_data = None
+        if req.simulate_curve:
+            curve_data = wheat_service.simulate_n_response(
+                P=req.P,
+                K=req.K,
+                S=req.S,
+                latitude=req.latitude,
+                longitude=req.longitude,
+                adm1=req.adm1,
+                soil_pH=req.soil_pH,
+                soil_SOC=req.soil_SOC,
+            )
+
+        pred_res["simulated_n_response_curve"] = curve_data
+        return pred_res
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Fertilizer recommendation error: {str(e)}")
+
+
+@app.get("/fertilizer-presets")
+def get_fertilizer_presets(adm1: str = "Oromia", soil_pH: float = 6.5, soil_SOC: float = 2.0, soil_P: float = 15.0):
+    """Returns curated Ethiopian extension fertilizer packages and simulations for smallholder farmers."""
+    strategies = ["low_input", "balanced_recommended", "high_potential"]
+    packages = []
+    for strat in strategies:
+        pkg = wheat_service.recommend_optimal_treatment(
+            adm1=adm1,
+            soil_pH=soil_pH,
+            soil_SOC=soil_SOC,
+            soil_P=soil_P,
+            target_strategy=strat,
+        )
+        packages.append(pkg)
+    return {"adm1": adm1, "packages": packages}
+
+
+class CropFertilizerRequestModel(BaseModel):
+    crop: str = Field(..., description="Specific crop (Wheat, Maize, Teff, Barley, Bean, Potato, ...)", example="Wheat")
+    soil_N_ppm: float = Field(150.0, ge=0, le=700, description="Soil available Nitrogen (mg/kg / ppm)", example=150.0)
+    soil_P_ppm: float = Field(15.0, ge=0, le=200, description="Soil available Phosphorus (mg/kg / ppm)", example=15.0)
+    soil_K_ppm: float = Field(280.0, ge=0, le=2200, description="Soil available Potassium (mg/kg)", example=280.0)
+    soil_pH: float = Field(6.5, ge=3.0, le=10.0, description="Soil pH", example=6.5)
+    soil_SOC_pct: float = Field(2.0, ge=0.1, le=10.0, description="Soil Organic Carbon %", example=2.0)
+    strategy: str = Field("balanced", description="Fertilizer strategy: low | balanced | high", example="balanced")
+    adm1: str = Field("Oromia", description="Administrative Region", example="Oromia")
+
+
+def fertilizer_from_soil(crop: str, input_data: CropInput, strategy: str = "balanced") -> dict:
+    """Build a Urea + DAP package from soil-test values and a specific crop."""
+    return crop_fertilizer_recommender.recommend(
+        crop=crop,
+        soil_N_ppm=input_data.N,
+        soil_P_ppm=input_data.P,
+        soil_K_ppm=input_data.K,
+        soil_pH=input_data.ph,
+        soil_SOC_pct=input_data.soil_SOC or 2.0,
+        strategy=strategy,
+        adm1=input_data.adm1 or "Oromia",
+    )
+
+
+@app.post("/recommend-crop-fertilizer")
+def recommend_crop_fertilizer(req: CropFertilizerRequestModel):
+    """Return scientific Urea + DAP fertilizer recommendation for a specific crop,
+    adjusted for soil test results (N, P, pH, SOC). Includes split application timing."""
+    try:
+        result = crop_fertilizer_recommender.recommend(
+            crop=req.crop,
+            soil_N_ppm=req.soil_N_ppm,
+            soil_P_ppm=req.soil_P_ppm,
+            soil_K_ppm=req.soil_K_ppm,
+            soil_pH=req.soil_pH,
+            soil_SOC_pct=req.soil_SOC_pct,
+            strategy=req.strategy,
+            adm1=req.adm1,
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Crop fertilizer recommendation error: {str(e)}")
+
+
 @app.post("/predict")
 def predict_crop(input_data: CropInput):
     if model is None or scaler is None or le is None or feature_cols is None:
@@ -221,12 +372,23 @@ def predict_crop(input_data: CropInput):
                 }
             )
 
+        fertilizer_packages = []
+        for crop_name in best_crops_list:
+            try:
+                fertilizer_packages.append(
+                    fertilizer_from_soil(crop_name, input_data, strategy="balanced")
+                )
+            except Exception:
+                continue
+
         response = {
             "recommended_crop": best_crop,
             "crops_in_group": best_crops_list,
             "explanation": CLASS_EXPLANATIONS.get(best_crop, ""),
             "confidence_pct": round(float(probs[best_idx]) * 100, 2),
             "top3_recommendations": top3_details,
+            "fertilizer_for_group": fertilizer_packages,
+            "primary_fertilizer": fertilizer_packages[0] if fertilizer_packages else None,
         }
         return response
     except HTTPException:
@@ -235,9 +397,36 @@ def predict_crop(input_data: CropInput):
         raise HTTPException(status_code=500, detail=f"Prediction error: {str(e)}")
 
 
+@app.post("/predict-unified")
+def predict_unified(input_data: CropInput):
+    """Predict crop suitability and crop-specific Urea + DAP rates from the same soil input."""
+    crop_res = predict_crop(input_data)
+    primary = crop_res.get("primary_fertilizer")
+    if primary is None:
+        crops = crop_res.get("crops_in_group") or ["Wheat"]
+        primary = fertilizer_from_soil(crops[0], input_data, strategy="balanced")
+
+    return {
+        "selected_area": {
+            "adm1": input_data.adm1,
+            "soil_type": input_data.soil_type,
+            "soil_color": input_data.soil_color,
+            "altitude_m": input_data.altitude_m,
+            "rainfall": input_data.rainfall,
+            "ph": input_data.ph,
+        },
+        "crop_suitability": crop_res,
+        "fertilizer_recommendation": primary,
+        "fertilizer_for_group": crop_res.get("fertilizer_for_group", []),
+    }
+
+
 @app.get("/health")
 def health():
     return {
-        "status": "healthy" if model is not None else "models not loaded",
-        "n_features": len(feature_cols) if feature_cols else 0,
+        "status": "healthy" if model is not None else "crop model not loaded",
+        "crop_model_loaded": model is not None,
+        "fertilizer_model_engine": wheat_service.model is not None and "ml_model" or "empirical_trial_prior",
+        "n_crop_features": len(feature_cols) if feature_cols else 0,
     }
+

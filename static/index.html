@@ -1,312 +1,1363 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Ethiopian Crop Recommendation System</title>
-    <style>
-      body {
-        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-        background: linear-gradient(135deg, #0f5132, #198754);
-        color: #fff;
-        margin: 0;
-        padding: 20px;
-        min-height: 100vh;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EthioSoil-AI | Unified Crop Suitability & Fertilizer Recommendation System</title>
+  <meta name="description"
+    content="Unified single-input AI platform for crop suitability classification and location-aware wheat fertilizer recommendation in Ethiopia." />
+  <!-- Modern Typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap"
+    rel="stylesheet" />
+  <style>
+    :root {
+      --primary: #15803d;
+      --primary-dark: #0e5327;
+      --primary-light: #22c55e;
+      --accent: #d97706;
+      --accent-gold: #f59e0b;
+      --blue-accent: #2563eb;
+      --bg-grad-start: #064e3b;
+      --bg-grad-end: #0f172a;
+      --card-bg: rgba(255, 255, 255, 0.98);
+      --card-border: rgba(255, 255, 255, 0.25);
+      --text-dark: #1e293b;
+      --text-muted: #64748b;
+      --border-color: #e2e8f0;
+      --radius-lg: 20px;
+      --radius-md: 12px;
+      --radius-sm: 8px;
+      --shadow-elevation: 0 20px 40px -15px rgba(0, 0, 0, 0.45);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: "Plus Jakarta Sans", sans-serif;
+      background: linear-gradient(145deg, var(--bg-grad-start), #062f22, var(--bg-grad-end));
+      color: var(--text-dark);
+      min-height: 100vh;
+      padding: 24px 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .app-wrapper {
+      width: 100%;
+      max-width: 1200px;
+    }
+
+    /* Hero Header */
+    header.hero {
+      text-align: center;
+      margin-bottom: 24px;
+      color: #fff;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      background: rgba(34, 197, 94, 0.18);
+      border: 1px solid rgba(34, 197, 94, 0.4);
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #86efac;
+      margin-bottom: 12px;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    header.hero h1 {
+      font-family: "Space Grotesk", sans-serif;
+      font-size: 2.4rem;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      margin-bottom: 8px;
+      background: linear-gradient(to right, #ffffff, #86efac, #fcd34d);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    header.hero p {
+      font-size: 1.05rem;
+      color: #cbd5e1;
+      max-width: 780px;
+      margin: 0 auto;
+      line-height: 1.5;
+    }
+
+    /* Tab Navigation */
+    .tabs-nav {
+      display: flex;
+      background: rgba(15, 23, 42, 0.65);
+      padding: 6px;
+      border-radius: 16px;
+      margin-bottom: 24px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(8px);
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .tab-btn {
+      flex: 1;
+      min-width: 180px;
+      padding: 12px 18px;
+      border: none;
+      background: transparent;
+      color: #94a3b8;
+      font-size: 14px;
+      font-weight: 600;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .tab-btn.active {
+      background: var(--primary);
+      color: #fff;
+      box-shadow: 0 4px 15px rgba(21, 128, 61, 0.4);
+    }
+
+    .tab-btn:hover:not(.active) {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    /* Main Card */
+    .card-main {
+      background: var(--card-bg);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-elevation);
+      padding: 32px;
+      border: 1px solid var(--card-border);
+      backdrop-filter: blur(12px);
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(6px);
       }
-      .container {
-        background: rgba(255, 255, 255, 0.95);
-        color: #333;
-        border-radius: 20px;
-        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
-        padding: 40px;
-        max-width: 650px;
-        width: 100%;
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
       }
-      h1 {
-        text-align: center;
-        color: #198754;
-        margin-bottom: 10px;
-      }
-      p.subtitle {
-        text-align: center;
-        color: #666;
-        margin-bottom: 30px;
-      }
-      .form-group {
-        margin-bottom: 20px;
-      }
-      label {
-        display: block;
-        margin-bottom: 8px;
-        font-weight: bold;
-        color: #0f5132;
-      }
-      input,
-      select {
-        width: 100%;
-        padding: 12px;
-        border: 2px solid #ddd;
-        border-radius: 10px;
-        font-size: 16px;
-        transition: border 0.3s;
-        background: #fff;
-      }
-      input:focus,
-      select:focus {
-        border-color: #198754;
-        outline: none;
-      }
-      button {
-        background: #198754;
-        color: white;
-        border: none;
-        padding: 15px;
-        width: 100%;
-        border-radius: 10px;
-        font-size: 18px;
-        cursor: pointer;
-        transition: background 0.3s;
-      }
-      button:hover {
-        background: #146c43;
-      }
-      #result {
-        margin-top: 30px;
-        padding: 20px;
-        background: #d4edda;
-        border-radius: 10px;
-        display: none;
-      }
-      .crop-rec {
-        font-size: 28px;
-        font-weight: bold;
-        color: #0f5132;
-        text-align: center;
-      }
-      .crop-list {
-        font-size: 18px;
-        color: #0f5132;
-        text-align: center;
-        margin: 15px 0;
-        font-style: italic;
-      }
-      .explanation {
-        font-size: 16px;
-        color: #333;
-        text-align: center;
-        margin: 15px 0;
-      }
-      .top3 {
-        margin-top: 20px;
-      }
-      .top-item {
-        margin: 15px 0;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        font-size: 18px;
-      }
-      .progress {
-        height: 28px;
-        background: #eee;
-        border-radius: 14px;
-        overflow: hidden;
-        flex: 1;
-        margin: 0 15px;
-      }
-      .progress-bar {
-        height: 100%;
-        background: #198754;
-        width: 0%;
-        transition: width 0.8s ease;
-      }
-      footer {
-        text-align: center;
-        margin-top: 30px;
-        color: #aaa;
-        font-size: 14px;
-      }
-    </style>
-  </head>
-  <body>
-    <div class="container">
-      <h1>🌾 Ethiopian Crop Recommender</h1>
-      <p class="subtitle">
-        Enter your farm's soil and climate data for personalized crop group
-        suggestions (based on real Ethiopian conditions)
+    }
+
+    /* Section Styling */
+    .section-title {
+      font-family: "Space Grotesk", sans-serif;
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--primary-dark);
+      margin: 20px 0 12px 0;
+      padding-bottom: 6px;
+      border-bottom: 2px solid #dcfce7;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .section-title:first-child {
+      margin-top: 0;
+    }
+
+    .regional-chip-indicator {
+      font-size: 12px;
+      font-weight: 600;
+      background: #f0fdf4;
+      color: #166534;
+      padding: 4px 12px;
+      border-radius: 999px;
+      border: 1px solid #bbf7d0;
+    }
+
+    /* Form Grids */
+    .form-grid-4 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .form-grid-3 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .field-group {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .field-group label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #334155;
+      margin-bottom: 6px;
+    }
+
+    .field-group input,
+    .field-group select {
+      padding: 10px 14px;
+      border: 1.5px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      font-size: 14px;
+      background: #f8fafc;
+      transition: all 0.2s ease;
+      color: #0f172a;
+    }
+
+    .field-group input:focus,
+    .field-group select:focus {
+      background: #fff;
+      border-color: var(--primary);
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15);
+    }
+
+    .field-hint {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    /* Quick preset chips */
+    .presets-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 20px;
+      align-items: center;
+    }
+
+    .preset-chip {
+      padding: 7px 14px;
+      border-radius: 999px;
+      border: 1.5px solid #bbf7d0;
+      background: #f0fdf4;
+      color: #166534;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .preset-chip:hover {
+      background: #dcfce7;
+      border-color: #86efac;
+      transform: translateY(-1px);
+    }
+
+    /* Action Toolbar */
+    .actions-toolbar {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 14px;
+      margin: 28px 0 20px 0;
+      padding: 18px;
+      background: #f0fdf4;
+      border: 1.5px dashed #86efac;
+      border-radius: var(--radius-md);
+    }
+
+    .btn-action {
+      border: none;
+      padding: 14px 20px;
+      border-radius: var(--radius-md);
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .btn-crop {
+      background: linear-gradient(135deg, #15803d, #166534);
+      color: #fff;
+    }
+
+    .btn-crop:hover {
+      background: linear-gradient(135deg, #16a34a, #15803d);
+      transform: translateY(-1px);
+    }
+
+    .btn-fert {
+      background: linear-gradient(135deg, #d97706, #b45309);
+      color: #fff;
+    }
+
+    .btn-fert:hover {
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      transform: translateY(-1px);
+    }
+
+    .btn-both {
+      background: linear-gradient(135deg, #0f766e, #115e59);
+      color: #fff;
+      grid-column: 1 / -1;
+    }
+
+    .btn-both:hover {
+      background: linear-gradient(135deg, #14b8a6, #0f766e);
+      transform: translateY(-1px);
+    }
+
+    /* Results Section (Dual Card Layout) */
+    .dual-results-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+      gap: 22px;
+      margin-top: 24px;
+    }
+
+    .result-box {
+      background: #fff;
+      border: 1.5px solid #e2e8f0;
+      border-radius: var(--radius-md);
+      padding: 24px;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05);
+    }
+
+    .result-box.highlight {
+      border-color: var(--primary-light);
+      box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.2);
+    }
+
+    .res-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    .res-header h3 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--primary-dark);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .badge-confidence {
+      background: #dcfce7;
+      color: #15803d;
+      padding: 4px 12px;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 13px;
+    }
+
+    .badge-region {
+      background: #e0f2fe;
+      color: #0369a1;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-weight: 600;
+      font-size: 12px;
+    }
+
+    .metric-hero {
+      background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+      border: 1.5px solid #86efac;
+      border-radius: var(--radius-sm);
+      padding: 16px;
+      text-align: center;
+      margin-bottom: 16px;
+    }
+
+    .metric-hero .metric-value {
+      font-size: 2.2rem;
+      font-weight: 800;
+      color: #14532d;
+      line-height: 1.1;
+    }
+
+    .metric-hero .metric-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #166534;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-top: 4px;
+    }
+
+    .mini-stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .mini-stat {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: var(--radius-sm);
+      padding: 12px;
+    }
+
+    .mini-stat .title {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    .mini-stat .val {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #0f172a;
+      margin-top: 2px;
+    }
+
+    /* Commercial Bags Table */
+    .bags-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+      font-size: 13px;
+    }
+
+    .bags-table th,
+    .bags-table td {
+      padding: 8px 10px;
+      text-align: left;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    .bags-table th {
+      font-weight: 600;
+      color: #475569;
+      background: #f8fafc;
+    }
+
+    /* Alternatives Progress */
+    .alt-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      font-size: 13px;
+    }
+
+    .alt-bar-wrap {
+      flex: 1;
+      margin: 0 12px;
+      background: #e2e8f0;
+      border-radius: 999px;
+      height: 10px;
+      overflow: hidden;
+    }
+
+    .alt-bar-fill {
+      background: var(--primary);
+      height: 100%;
+      border-radius: 999px;
+      transition: width 0.6s ease;
+    }
+
+    /* Curve Pill Grid */
+    .curve-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(75px, 1fr));
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .curve-pill {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      padding: 8px 4px;
+      border-radius: var(--radius-sm);
+      text-align: center;
+    }
+
+    .curve-pill .n-label {
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+
+    .curve-pill .n-val {
+      font-size: 13px;
+      font-weight: 700;
+      color: #15803d;
+      margin-top: 2px;
+    }
+
+    /* Warning Banner */
+    .warn-banner {
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      border-radius: var(--radius-sm);
+      padding: 12px;
+      margin-top: 14px;
+      font-size: 12px;
+      color: #92400e;
+    }
+
+    /* Audit Section Styles */
+    .audit-card {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: var(--radius-md);
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+
+    .audit-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 14px 0;
+      font-size: 13px;
+    }
+
+    .audit-table th,
+    .audit-table td {
+      padding: 10px 12px;
+      text-align: left;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    .audit-table th {
+      background: #f1f5f9;
+      font-weight: 700;
+      color: #1e293b;
+    }
+
+    .badge-metric {
+      background: #dcfce7;
+      color: #166534;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-weight: 700;
+    }
+
+    footer {
+      text-align: center;
+      color: #94a3b8;
+      font-size: 13px;
+      margin-top: 28px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app-wrapper">
+    <!-- Header -->
+    <header class="hero">
+      <div class="hero-badge">🇪🇹 EthioSoil-AI • Agronomic Decision Support</div>
+      <h1>Ethiopian Crop & Fertilizer Advisor</h1>
+      <p>
+        Recommend a suitable crop group from soil and climate, then get a scientific Urea + DAP package
+        for the specific crop — rates, bag proportions, and split application timing.
       </p>
+    </header>
 
-      <div class="form-group">
-        <label>Nitrogen (N, mg/kg)</label
-        ><input type="number" id="N" placeholder="e.g., 180" step="1" />
-      </div>
-      <div class="form-group">
-        <label>Phosphorus (P, mg/kg)</label
-        ><input type="number" id="P" placeholder="e.g., 40" step="1" />
-      </div>
-      <div class="form-group">
-        <label>Potassium (K, mg/kg)</label
-        ><input type="number" id="K" placeholder="e.g., 300" step="1" />
-      </div>
-      <div class="form-group">
-        <label>Soil pH</label
-        ><input type="number" id="ph" placeholder="e.g., 6.5" step="0.1" />
-      </div>
-      <div class="form-group">
-        <label>Average Temperature (°C)</label
-        ><input
-          type="number"
-          id="temperature"
-          placeholder="e.g., 22"
-          step="0.1"
-        />
-      </div>
-      <div class="form-group">
-        <label>Relative Humidity (%)</label
-        ><input type="number" id="humidity" placeholder="e.g., 65" step="0.1" />
-      </div>
-      <div class="form-group">
-        <label>Rainfall (seasonal sum)</label
-        ><input type="number" id="rainfall" placeholder="e.g., 25" step="0.1" />
-      </div>
-      <div class="form-group">
-        <label>Altitude (meters)</label
-        ><input
-          type="number"
-          id="altitude_m"
-          placeholder="e.g., 2400"
-          step="1"
-        />
-      </div>
-      <div class="form-group">
-        <label>Zinc (Zn)</label
-        ><input type="number" id="Zn" placeholder="e.g., 5" step="0.1" />
-      </div>
-      <div class="form-group">
-        <label>Sulfur (S)</label
-        ><input type="number" id="S" placeholder="e.g., 20" step="0.1" />
-      </div>
-      <div class="form-group">
-        <label>Soil Moisture (0-1)</label
-        ><input
-          type="number"
-          id="soil_moisture"
-          placeholder="e.g., 0.6"
-          step="0.01"
-        />
-      </div>
-      <div class="form-group">
-        <label>Soil Color</label>
-        <select id="soil_color">
-          <option value="brown">Brown</option>
-          <option value="red">Red</option>
-          <option value="black">Black</option>
-          <option value="gray">Gray</option>
-          <option value="other">Other</option>
-        </select>
-      </div>
+    <!-- Tabs Navigation -->
+    <div class="tabs-nav">
+      <button class="tab-btn active" id="nav-btn-unified" onclick="switchTab('unified')">
+        <span>🌾🧪</span> Unified Advisor (One Input • Dual Output)
+      </button>
+      <button class="tab-btn" id="nav-btn-crop" onclick="switchTab('crop')">
+        <span>🌾</span> Crop Suitability
+      </button>
+      <button class="tab-btn" id="nav-btn-fert" onclick="switchTab('fert')">
+        <span>🧪</span> Fertilizer & Yield Simulator
+      </button>
+      <button class="tab-btn" id="nav-btn-audit" onclick="switchTab('audit')">
+        <span>📊</span> Model & Data Audit Report
+      </button>
+    </div>
 
-      <button onclick="predict()">Get Recommendation</button>
+    <!-- Main Container Card -->
+    <div class="card-main">
+      <!-- ================= TAB 1: UNIFIED DECISION ADVISOR ================= -->
+      <div class="tab-content active" id="tab-unified">
+        <!-- Step 1: Regional Agro-Ecology -->
+        <div class="section-title">
+          <span>📍 1. Ethiopian Region & Agro-Ecological Area</span>
+          <span class="regional-chip-indicator" id="u-reg-indicator">Oromia Highlands • Vertisols</span>
+        </div>
 
-      <div id="result">
-        <div class="crop-rec" id="recommended"></div>
-        <div class="crop-list" id="crop_list"></div>
-        <div class="explanation" id="explanation"></div>
-        <div
-          id="confidence"
-          style="text-align: center; font-size: 18px; margin: 10px 0"
-        ></div>
-        <div class="top3">
-          <h3>Top 3 Alternatives:</h3>
-          <div id="top3"></div>
+        <div class="form-grid-3">
+          <div class="field-group">
+            <label for="u_adm1">Administrative Region / Zone</label>
+            <select id="u_adm1" onchange="onRegionChange()">
+              <option value="Oromia" selected>Oromia (Bale / Arsi / Shewa Highlands)</option>
+              <option value="Amhara">Amhara (Gojjam / Gondar / Wollo)</option>
+              <option value="Tigray">Tigray (Northern Highlands)</option>
+              <option value="SNNPRS">SNNPRS (Southern Rift & Highlands)</option>
+              <option value="Afar">Afar / Lowlands (Semi-Arid)</option>
+            </select>
+            <span class="field-hint">Regional trials calibrate baseline yield & response</span>
+          </div>
+
+          <div class="field-group">
+            <label for="u_soil_type">Soil Classification</label>
+            <select id="u_soil_type">
+              <option value="Vertisols" selected>Vertisols (Heavy black clay)</option>
+              <option value="Nitisols">Nitisols (Deep red clay, weathered)</option>
+              <option value="Cambisols">Cambisols (Brown mountain soil)</option>
+              <option value="Luvisols">Luvisols (Sandy clay / loam)</option>
+              <option value="Unknown">Other / Unknown</option>
+            </select>
+          </div>
+
+          <div class="field-group">
+            <label for="u_soil_color">Visual Soil Color</label>
+            <select id="u_soil_color">
+              <option value="brown" selected>Brown (Highland loam)</option>
+              <option value="black">Black (Koticha / Vertisols)</option>
+              <option value="red">Red (Key Ate / Nitisols)</option>
+              <option value="gray">Gray</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="presets-bar">
+          <span style="font-size: 12px; font-weight: 700; color: #475569">QUICK REGIONAL PRESETS:</span>
+          <button class="preset-chip" onclick="applyRegionalPreset('Oromia')">⚡ Oromia Highlands (Arsi/Bale)</button>
+          <button class="preset-chip" onclick="applyRegionalPreset('Amhara')">⚡ Amhara High-Rainfall (Gojjam)</button>
+          <button class="preset-chip" onclick="applyRegionalPreset('Tigray')">⚡ Tigray Semi-Arid</button>
+          <button class="preset-chip" onclick="applyRegionalPreset('SNNPRS')">⚡ SNNPRS Mid-Altitude</button>
+        </div>
+
+        <!-- Step 2: Soil Nutrients & Chemistry -->
+        <div class="section-title"><span>🌱 2. Soil Nutrients & Chemical Test Results</span></div>
+        <div class="form-grid-4">
+          <div class="field-group">
+            <label for="u_N">Available Soil N (mg/kg / ppm)</label>
+            <input type="number" id="u_N" value="180" step="5" />
+            <span class="field-hint">Soil N index (0 - 700)</span>
+          </div>
+          <div class="field-group">
+            <label for="u_P">Available Soil P (mg/kg / ppm)</label>
+            <input type="number" id="u_P" value="38" step="1" />
+            <span class="field-hint">Olsen or Bray-II extraction</span>
+          </div>
+          <div class="field-group">
+            <label for="u_K">Potassium (K, mg/kg)</label>
+            <input type="number" id="u_K" value="280" step="10" />
+            <span class="field-hint">Ethiopian soils typically rich in K</span>
+          </div>
+          <div class="field-group">
+            <label for="u_ph">Soil pH</label>
+            <input type="number" id="u_ph" value="6.5" step="0.1" />
+            <span class="field-hint">Optimal for wheat/cereals: 6.0 - 7.5</span>
+          </div>
+        </div>
+
+        <div class="form-grid-4">
+          <div class="field-group">
+            <label for="u_soc">Soil Organic Carbon (SOC %)</label>
+            <input type="number" id="u_soc" value="2.1" step="0.1" />
+          </div>
+          <div class="field-group">
+            <label for="u_moisture">Topsoil Wetness (0–1)</label>
+            <input type="number" id="u_moisture" value="0.60" step="0.05" />
+          </div>
+          <div class="field-group">
+            <label for="u_Zn">Zinc Level (Zn)</label>
+            <input type="number" id="u_Zn" value="5.0" step="0.5" />
+          </div>
+          <div class="field-group">
+            <label for="u_S">Sulfur Level (S)</label>
+            <input type="number" id="u_S" value="18.0" step="1" />
+          </div>
+        </div>
+
+        <!-- Step 3: Climate & Topography -->
+        <div class="section-title"><span>🌤️ 3. Topography & MERRA-2 Agro-Climate</span></div>
+        <div class="form-grid-4">
+          <div class="field-group">
+            <label for="u_altitude">Altitude / Elevation (m)</label>
+            <input type="number" id="u_altitude" value="2400" step="50" />
+            <span class="field-hint">e.g., 2,400 m (Highlands)</span>
+          </div>
+          <div class="field-group">
+            <label for="u_temp">Avg Temperature (°C)</label>
+            <input type="number" id="u_temp" value="21.5" step="0.5" />
+          </div>
+          <div class="field-group">
+            <label for="u_humidity">Relative Humidity (%)</label>
+            <input type="number" id="u_humidity" value="65.0" step="1" />
+          </div>
+          <div class="field-group">
+            <label for="u_rainfall">Seasonal Rainfall Index</label>
+            <input type="number" id="u_rainfall" value="25.0" step="1" />
+          </div>
+        </div>
+
+        <!-- Step 4: Fertilizer intensity + specific crop -->
+        <div class="section-title"><span>🧪 4. Fertilizer Intensity (Urea + DAP will be calculated)</span></div>
+        <div class="form-grid-3">
+          <div class="field-group">
+            <label for="u_strategy">Recommendation intensity</label>
+            <select id="u_strategy">
+              <option value="low">Low / moisture-limited (75% of EIAR base)</option>
+              <option value="balanced" selected>Balanced EIAR / MoA package</option>
+              <option value="high">High potential (irrigated / high rainfall)</option>
+            </select>
+            <span class="field-hint">Rates are computed from soil N, P, pH, SOC and the chosen crop</span>
+          </div>
+          <div class="field-group">
+            <label for="u_target_crop">Specific crop for fertilizer</label>
+            <select id="u_target_crop">
+              <option value="Wheat">Wheat</option>
+              <option value="Maize">Maize</option>
+              <option value="Teff">Teff</option>
+              <option value="Barley">Barley</option>
+              <option value="Sorghum">Sorghum</option>
+              <option value="Dagussa">Dagussa (finger millet)</option>
+              <option value="Bean">Bean</option>
+              <option value="Pea">Pea</option>
+              <option value="Niger seed">Niger seed (nug)</option>
+              <option value="Potato">Potato</option>
+              <option value="Red Pepper">Red Pepper</option>
+            </select>
+            <span class="field-hint">After crop recommendation, pick a crop from the group</span>
+          </div>
+        </div>
+
+        <div class="actions-toolbar">
+          <button class="btn-action btn-crop" id="btn-u-crop" onclick="runCropFromUnified()">
+            <span>🌾</span> Recommend Crop
+          </button>
+          <button class="btn-action btn-fert" id="btn-u-fert" onclick="runFertFromUnified()">
+            <span>🧪</span> Recommend Fertilizer (Urea + DAP)
+          </button>
+        </div>
+
+        <!-- Unified Results Container (Dual Output) -->
+        <div class="dual-results-grid" id="unified-results-container" style="display: none">
+          <!-- Left Card: Crop Suitability Output -->
+          <div class="result-box" id="res-box-crop">
+            <div class="res-header">
+              <div>
+                <span style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase">
+                  SUITABILITY OUTCOME
+                </span>
+                <h3 id="u-crop-title">Major Cereals</h3>
+              </div>
+              <div class="badge-confidence" id="u-crop-conf">91.8% Confidence</div>
+            </div>
+
+            <div id="u-crop-members" style="font-size: 14px; font-weight: 700; color: #166534; margin-bottom: 8px">
+              Crops: Teff, Wheat, Maize, Barley
+            </div>
+            <div id="u-crop-chips" style="display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 14px 0"></div>
+            <p id="u-crop-desc" style="font-size: 13px; color: #475569; line-height: 1.5; margin-bottom: 18px"></p>
+
+            <div style="font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 8px">
+              ALTERNATIVE CROP SUITABILITY:
+            </div>
+            <div id="u-crop-alts" style="margin-bottom: 14px"></div>
+
+            <!-- Contextual Regional Tag -->
+            <div class="warn-banner" id="u-crop-regional-tag">
+              📍 <strong>Area Synergy:</strong> Calibrated for <span id="u-crop-reg-name">Oromia</span>.
+            </div>
+          </div>
+
+          <!-- Right Card: Urea + DAP for the specific crop -->
+          <div class="result-box" id="res-box-fert">
+            <div class="res-header">
+              <div>
+                <span style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase">
+                  UREA + DAP PACKAGE
+                </span>
+                <h3 id="u-fert-title">Select a crop</h3>
+              </div>
+              <div class="badge-region" id="u-fert-region-badge">Soil-adjusted</div>
+            </div>
+
+            <div class="metric-hero">
+              <div class="metric-value" id="u-fert-ratio">—</div>
+              <div class="metric-label" id="u-fert-ratio-label">DAP : Urea proportion per hectare</div>
+            </div>
+
+            <div class="mini-stats-grid">
+              <div class="mini-stat">
+                <div class="title">DAP (18-46-0)</div>
+                <div class="val" id="u-fert-dap">—</div>
+              </div>
+              <div class="mini-stat">
+                <div class="title">Urea (46-0-0)</div>
+                <div class="val" id="u-fert-urea">—</div>
+              </div>
+            </div>
+
+            <div style="font-size: 12px; font-weight: 700; color: #334155; margin: 12px 0 6px 0">
+              📦 50 KG BAGS / HA AND HOW TO APPLY
+            </div>
+            <table class="bags-table">
+              <thead>
+                <tr>
+                  <th>Product</th>
+                  <th>kg/ha</th>
+                  <th>50 kg bags</th>
+                  <th>Share</th>
+                </tr>
+              </thead>
+              <tbody id="u-fert-bags-tbody"></tbody>
+            </table>
+
+            <div style="font-size: 12px; font-weight: 700; color: #334155; margin: 16px 0 6px 0">
+              ⏱ SPLIT UREA APPLICATION (CROP-SPECIFIC)
+            </div>
+            <div id="u-fert-splits"></div>
+
+            <p id="u-fert-science" style="font-size: 13px; color: #475569; line-height: 1.55; margin-top: 14px"></p>
+            <div class="warn-banner" id="u-fert-soil-notes"></div>
+          </div>
         </div>
       </div>
 
-      <footer>
-        Made for Ethiopian Farmers 🇪🇹 | Real Data • Detailed Crop Groups
-      </footer>
+      <!-- ================= TAB 2: STANDALONE CROP ================= -->
+      <div class="tab-content" id="tab-crop">
+        <div class="section-title"><span>🌾 Crop Suitability Classifier</span></div>
+        <p style="font-size: 14px; color: #64748b; margin-bottom: 20px">
+          Standalone crop suitability predictor. Switch to the <strong>Unified Advisor</strong> tab to predict both
+          crop and localized fertilizer from the same input!
+        </p>
+        <button class="btn-action btn-crop" onclick="switchTab('unified')" style="width: 100%">
+          Open Unified Advisor Form →
+        </button>
+      </div>
+
+      <!-- ================= TAB 3: STANDALONE FERTILIZER ================= -->
+      <div class="tab-content" id="tab-fert">
+        <div class="section-title"><span>🧪 Crop-Specific Urea + DAP Advisor</span></div>
+        <p style="font-size: 14px; color: #64748b; margin-bottom: 20px">
+          Use the Unified Advisor: recommend a crop, then recommend Urea and DAP for that specific crop
+          from your soil N, P, K, pH and organic carbon.
+        </p>
+        <button class="btn-action btn-fert" onclick="switchTab('unified')" style="width: 100%">
+          Open Unified Advisor Form →
+        </button>
+      </div>
+
+      <!-- ================= TAB 4: MODEL & DATA AUDIT REPORT ================= -->
+      <div class="tab-content" id="tab-audit">
+        <div class="section-title"><span>📊 Rigorous Machine Learning Audit Report</span></div>
+        <p style="font-size: 14px; color: #475569; margin-bottom: 18px">
+          Complete audit trail detailing data cleaning, class balance, SMOTE implementation, and verified model
+          performance metrics (Accuracy, Precision, Recall, and F1-score).
+        </p>
+
+        <!-- Audit Card 1: Data Cleaning -->
+        <div class="audit-card">
+          <h4 style="color: #1e293b; font-size: 16px; margin-bottom: 10px">1. Data Provenance & Cleaning Integrity</h4>
+          <table class="audit-table">
+            <tr>
+              <th>Dataset</th>
+              <th>Records</th>
+              <th>Cleaning Operations</th>
+              <th>Verification Status</th>
+            </tr>
+            <tr>
+              <td><strong>Dataset A (Crop Suitability)</strong></td>
+              <td>3,867 rows</td>
+              <td>Zero missing values; unit standardization (N in mg/kg, altitude in m, RH in %); rare class
+                consolidation</td>
+              <td><span class="badge-metric">100% Clean</span></td>
+            </tr>
+            <tr>
+              <td><strong>Dataset B (Wheat Trials)</strong></td>
+              <td>1,535 rows (42 trials)</td>
+              <td>Grouped by trial to eliminate leakage; standardized elemental N, P, S, K and yield in kg/ha</td>
+              <td><span class="badge-metric">Verified EIAR</span></td>
+            </tr>
+          </table>
+        </div>
+
+        <!-- Audit Card 2: Crop Model Performance -->
+        <div class="audit-card">
+          <h4 style="color: #1e293b; font-size: 16px; margin-bottom: 10px">
+            2. Crop Suitability Model Metrics (XGBoost + SMOTE Pipeline)
+          </h4>
+          <div style="display: flex; gap: 16px; margin-bottom: 14px; flex-wrap: wrap">
+            <div class="mini-stat" style="flex: 1">
+              <div class="title">Test Accuracy</div>
+              <div class="val" style="color: #15803d">80.46% (~80.5%)</div>
+            </div>
+            <div class="mini-stat" style="flex: 1">
+              <div class="title">Test Macro F1</div>
+              <div class="val" style="color: #15803d">0.6828 (68.3%)</div>
+            </div>
+            <div class="mini-stat" style="flex: 1">
+              <div class="title">Weighted F1</div>
+              <div class="val" style="color: #15803d">0.8066 (80.7%)</div>
+            </div>
+          </div>
+
+          <table class="audit-table">
+            <thead>
+              <tr>
+                <th>Agronomic Class</th>
+                <th>Crops Included</th>
+                <th>Precision</th>
+                <th>Recall</th>
+                <th>F1-Score</th>
+                <th>Test Support</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Major_Cereals</strong></td>
+                <td>Teff, Maize, Wheat, Barley</td>
+                <td><strong>0.85</strong></td>
+                <td><strong>0.89</strong></td>
+                <td><strong>0.87</strong></td>
+                <td>482</td>
+              </tr>
+              <tr>
+                <td><strong>Cereals (Minor)</strong></td>
+                <td>Dagussa, Sorghum</td>
+                <td><strong>0.83</strong></td>
+                <td><strong>0.76</strong></td>
+                <td><strong>0.79</strong></td>
+                <td>82</td>
+              </tr>
+              <tr>
+                <td><strong>Specialty</strong></td>
+                <td>Niger seed, Potato, Red Pepper, Fallow</td>
+                <td><strong>0.94</strong></td>
+                <td><strong>0.68</strong></td>
+                <td><strong>0.79</strong></td>
+                <td>85</td>
+              </tr>
+              <tr>
+                <td><strong>Pulses</strong></td>
+                <td>Bean, Pea</td>
+                <td><strong>0.26</strong></td>
+                <td><strong>0.31</strong></td>
+                <td><strong>0.28</strong></td>
+                <td>52</td>
+              </tr>
+              <tr style="background: #f8fafc; font-weight: 700">
+                <td colspan="2">Overall Accuracy / Total Support</td>
+                <td colspan="3"><span class="badge-metric">80.46% (0.80)</span></td>
+                <td>701</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Audit Card 3: Fertilizer Regressor -->
+        <div class="audit-card">
+          <h4 style="color: #1e293b; font-size: 16px; margin-bottom: 10px">
+            3. Wheat Fertilizer Regressor (GroupKFold Cross-Validation)
+          </h4>
+          <p style="font-size: 13px; color: #475569; margin-bottom: 10px">
+            Evaluated strictly with 5-Fold GroupKFold across 42 trials to guarantee real-world generalization to new
+            farms without spatial data leakage.
+          </p>
+          <table class="audit-table">
+            <thead>
+              <tr>
+                <th>Model Architecture</th>
+                <th>RMSE (kg/ha)</th>
+                <th>MAE (kg/ha)</th>
+                <th>Group R²</th>
+                <th>Pearson r Correlation</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Dummy Mean Baseline</td>
+                <td>1,126.0 ± 115.5</td>
+                <td>906.7</td>
+                <td>-0.065</td>
+                <td>0.000</td>
+              </tr>
+              <tr>
+                <td>Ridge Regression</td>
+                <td>974.6 ± 128.1</td>
+                <td>776.7</td>
+                <td>0.146</td>
+                <td>0.547</td>
+              </tr>
+              <tr>
+                <td>Random Forest</td>
+                <td>1,018.9 ± 173.2</td>
+                <td>809.1</td>
+                <td>0.107</td>
+                <td>0.430</td>
+              </tr>
+              <tr style="background: #f0fdf4">
+                <td><strong>HistGradientBoosting (Selected)</strong></td>
+                <td><strong>999.4 ± 173.1</strong></td>
+                <td><strong>789.8</strong></td>
+                <td><strong>0.133</strong></td>
+                <td><strong>0.487</strong></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
 
-    <script>
-      async function predict() {
-        const data = {
-          N: parseFloat(document.getElementById("N").value),
-          P: parseFloat(document.getElementById("P").value),
-          K: parseFloat(document.getElementById("K").value),
-          ph: parseFloat(document.getElementById("ph").value),
-          temperature: parseFloat(document.getElementById("temperature").value),
-          humidity: parseFloat(document.getElementById("humidity").value),
-          rainfall: parseFloat(document.getElementById("rainfall").value),
-          altitude_m: parseFloat(document.getElementById("altitude_m").value),
-          Zn: parseFloat(document.getElementById("Zn").value),
-          S: parseFloat(document.getElementById("S").value),
-          soil_moisture: parseFloat(
-            document.getElementById("soil_moisture").value,
-          ),
-          soil_color: document.getElementById("soil_color").value,
-        };
+    <footer>
+      EthioSoil-AI • Built on Real Ethiopian Agricultural Trials & Soil Data • EIAR / Harvard Dataverse
+    </footer>
+  </div>
 
-        const numericFields = { ...data };
-        delete numericFields.soil_color;
-        if (Object.values(numericFields).some((v) => isNaN(v))) {
-          alert("Please fill all fields with valid numbers");
-          return;
-        }
+  <!-- Interactive Scripts -->
+  <script>
+    const REGIONAL_BASELINES = {
+      Oromia: {
+        soil_type: "Vertisols",
+        soil_color: "black",
+        ph: 6.5,
+        soc: 2.2,
+        N: 180,
+        P: 38,
+        K: 280,
+        altitude: 2400,
+        temp: 21.5,
+        humidity: 65,
+        rainfall: 26,
+        label: "Oromia Highlands (Bale/Arsi) • Vertisols • Optimal Bread Wheat Zone",
+      },
+      Amhara: {
+        soil_type: "Vertisols",
+        soil_color: "brown",
+        ph: 6.2,
+        soc: 2.0,
+        N: 160,
+        P: 25,
+        K: 240,
+        altitude: 2200,
+        temp: 22.0,
+        humidity: 68,
+        rainfall: 28,
+        label: "Amhara High-Rainfall (Gojjam/Gondar) • Nitisols/Vertisols • High Cereal Potential",
+      },
+      Tigray: {
+        soil_type: "Cambisols",
+        soil_color: "gray",
+        ph: 7.2,
+        soc: 1.4,
+        N: 120,
+        P: 18,
+        K: 220,
+        altitude: 2100,
+        temp: 23.5,
+        humidity: 55,
+        rainfall: 18,
+        label: "Tigray Semi-Arid Highlands • Moisture-Constrained Cereal & Barley Zone",
+      },
+      SNNPRS: {
+        soil_type: "Nitisols",
+        soil_color: "red",
+        ph: 6.0,
+        soc: 2.5,
+        N: 190,
+        P: 30,
+        K: 310,
+        altitude: 1900,
+        temp: 23.0,
+        humidity: 70,
+        rainfall: 30,
+        label: "SNNPRS Mid-Highlands • Deep Red Nitisols • Diversified Cereals & Pulses",
+      },
+      Afar: {
+        soil_type: "Luvisols",
+        soil_color: "other",
+        ph: 7.8,
+        soc: 0.9,
+        N: 80,
+        P: 12,
+        K: 180,
+        altitude: 600,
+        temp: 31.0,
+        humidity: 42,
+        rainfall: 10,
+        label: "Afar Lowlands • Semi-Arid Pastoral • Low Moisture",
+      },
+    };
 
-        try {
-          const response = await fetch("/predict", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(data),
-          });
+    function switchTab(tabId) {
+      document.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
+      document.querySelectorAll(".tab-content").forEach((c) => c.classList.remove("active"));
 
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.detail || "Server error");
-          }
+      document.getElementById("nav-btn-" + tabId).classList.add("active");
+      document.getElementById("tab-" + tabId).classList.add("active");
+    }
 
-          const result = await response.json();
+    function onRegionChange() {
+      const reg = document.getElementById("u_adm1").value;
+      const config = REGIONAL_BASELINES[reg] || REGIONAL_BASELINES["Oromia"];
+      document.getElementById("u-reg-indicator").textContent = config.label;
+    }
 
-          document.getElementById("recommended").textContent =
-            "Recommended Group: " +
-            result.recommended_crop.toUpperCase() +
-            " 🌱";
-          document.getElementById("crop_list").textContent =
-            "(" + result.crops_in_group.join(", ") + ")";
-          document.getElementById("explanation").textContent =
-            result.explanation;
-          document.getElementById("confidence").textContent =
-            "Confidence: " + result.confidence_pct + "%";
-
-          const top3Div = document.getElementById("top3");
-          top3Div.innerHTML = "";
-          result.top3_recommendations.forEach(function (item) {
-            const div = document.createElement("div");
-            div.className = "top-item";
-            div.innerHTML =
-              "<span>" +
-              item.crop.toUpperCase() +
-              " (" +
-              item.crops_in_group.join(", ") +
-              ")</span>" +
-              '<div class="progress"><div class="progress-bar" style="width: ' +
-              item.probability_pct +
-              '%"></div></div>' +
-              "<span>" +
-              item.probability_pct +
-              "%</span>";
-            top3Div.appendChild(div);
-          });
-
-          document.getElementById("result").style.display = "block";
-        } catch (err) {
-          alert("Error: " + err.message);
-          console.error(err);
-        }
+    function applyRegionalPreset(reg) {
+      document.getElementById("u_adm1").value = reg;
+      const c = REGIONAL_BASELINES[reg];
+      if (c) {
+        document.getElementById("u_soil_type").value = c.soil_type;
+        document.getElementById("u_soil_color").value = c.soil_color;
+        document.getElementById("u_ph").value = c.ph;
+        document.getElementById("u_soc").value = c.soc;
+        document.getElementById("u_N").value = c.N;
+        document.getElementById("u_P").value = c.P;
+        document.getElementById("u_K").value = c.K;
+        document.getElementById("u_altitude").value = c.altitude;
+        document.getElementById("u_temp").value = c.temp;
+        document.getElementById("u_humidity").value = c.humidity;
+        document.getElementById("u_rainfall").value = c.rainfall;
+        onRegionChange();
       }
-    </script>
-  </body>
+    }
+
+    function buildUnifiedPayload() {
+      return {
+        adm1: document.getElementById("u_adm1").value,
+        soil_type: document.getElementById("u_soil_type").value,
+        soil_color: document.getElementById("u_soil_color").value,
+        N: parseFloat(document.getElementById("u_N").value) || 0,
+        P: parseFloat(document.getElementById("u_P").value) || 0,
+        K: parseFloat(document.getElementById("u_K").value) || 0,
+        ph: parseFloat(document.getElementById("u_ph").value) || 6.5,
+        soil_SOC: parseFloat(document.getElementById("u_soc").value) || 2.0,
+        soil_moisture: parseFloat(document.getElementById("u_moisture").value) || 0.6,
+        Zn: parseFloat(document.getElementById("u_Zn").value) || 5.0,
+        S: parseFloat(document.getElementById("u_S").value) || 18.0,
+        altitude_m: parseFloat(document.getElementById("u_altitude").value) || 2400,
+        temperature: parseFloat(document.getElementById("u_temp").value) || 22.0,
+        humidity: parseFloat(document.getElementById("u_humidity").value) || 65.0,
+        rainfall: parseFloat(document.getElementById("u_rainfall").value) || 25.0,
+      };
+    }
+
+    function buildFertilizerPayload(cropName) {
+      const p = buildUnifiedPayload();
+      return {
+        crop: cropName || document.getElementById("u_target_crop").value,
+        soil_N_ppm: p.N,
+        soil_P_ppm: p.P,
+        soil_K_ppm: p.K,
+        soil_pH: p.ph,
+        soil_SOC_pct: p.soil_SOC,
+        strategy: document.getElementById("u_strategy").value,
+        adm1: p.adm1,
+      };
+    }
+
+    // Render functions
+    function renderCropCard(data) {
+      document.getElementById("u-crop-title").textContent = data.recommended_crop.replace("_", " ");
+      document.getElementById("u-crop-conf").textContent = data.confidence_pct + "% Confidence";
+      document.getElementById("u-crop-members").textContent = "Crops in Group: " + data.crops_in_group.join(", ");
+      document.getElementById("u-crop-desc").textContent = data.explanation;
+
+      const chips = document.getElementById("u-crop-chips");
+      chips.innerHTML = "";
+      (data.crops_in_group || []).forEach((crop, idx) => {
+        const btn = document.createElement("button");
+        btn.className = "preset-chip";
+        btn.type = "button";
+        btn.textContent = "🧪 " + crop;
+        btn.onclick = () => {
+          document.getElementById("u_target_crop").value = crop;
+          runFertFromUnified(crop);
+        };
+        chips.appendChild(btn);
+        if (idx === 0) {
+          document.getElementById("u_target_crop").value = crop;
+        }
+      });
+
+      const altsDiv = document.getElementById("u-crop-alts");
+      altsDiv.innerHTML = "";
+      (data.top3_recommendations || []).forEach((item) => {
+        const row = document.createElement("div");
+        row.className = "alt-item";
+        row.innerHTML = `
+            <span style="font-weight: 600; min-width: 130px">${item.crop.replace("_", " ")}</span>
+            <div class="alt-bar-wrap">
+              <div class="alt-bar-fill" style="width: ${item.probability_pct}%"></div>
+            </div>
+            <span style="font-weight: 700; min-width: 45px; text-align: right">${item.probability_pct}%</span>
+          `;
+        altsDiv.appendChild(row);
+      });
+
+      const regName = document.getElementById("u_adm1").value;
+      document.getElementById("u-crop-reg-name").textContent = regName;
+      document.getElementById("res-box-crop").classList.add("highlight");
+      setTimeout(() => document.getElementById("res-box-crop").classList.remove("highlight"), 1200);
+    }
+
+    function renderFertCard(data) {
+      if (!data || data.error) {
+        alert((data && data.error) || "No fertilizer recommendation returned");
+        return;
+      }
+      const dap = data.commercial_products.DAP;
+      const urea = data.commercial_products.Urea;
+      const ratio = data.combination_ratio;
+
+      document.getElementById("u-fert-title").textContent = data.crop + " fertilizer";
+      document.getElementById("u-fert-region-badge").textContent = (data.region || "") + " • " + data.strategy;
+      document.getElementById("u-fert-ratio").textContent = ratio.dap_to_urea_by_weight;
+      document.getElementById("u-fert-ratio-label").textContent = ratio.description;
+      document.getElementById("u-fert-dap").textContent =
+        dap.rate_kg_ha + " kg/ha  (" + dap.bags_50kg_ha + " bags)";
+      document.getElementById("u-fert-urea").textContent =
+        urea.total_rate_kg_ha + " kg/ha  (" + urea.bags_50kg_ha + " bags)";
+
+      const tbody = document.getElementById("u-fert-bags-tbody");
+      tbody.innerHTML = `
+        <tr>
+          <td><strong>DAP</strong><br/><span style="font-size:11px;color:#64748b">${dap.formula}</span></td>
+          <td>${dap.rate_kg_ha}</td>
+          <td><strong>${dap.bags_integer}</strong> (${dap.bags_50kg_ha})</td>
+          <td>${dap.proportion_pct}%</td>
+        </tr>
+        <tr>
+          <td><strong>Urea</strong><br/><span style="font-size:11px;color:#64748b">${urea.formula}</span></td>
+          <td>${urea.total_rate_kg_ha}</td>
+          <td><strong>${urea.bags_integer}</strong> (${urea.bags_50kg_ha})</td>
+          <td>${urea.proportion_pct}%</td>
+        </tr>
+        <tr>
+          <td colspan="2"><strong>Total</strong></td>
+          <td colspan="2"><strong>${ratio.total_bags_ha} bags/ha</strong> (${ratio.total_fertiliser_kg_ha} kg)</td>
+        </tr>
+      `;
+
+      const splitsDiv = document.getElementById("u-fert-splits");
+      splitsDiv.innerHTML = "";
+      (urea.split_application || []).forEach((s) => {
+        const row = document.createElement("div");
+        row.className = "mini-stat";
+        row.style.marginBottom = "8px";
+        row.innerHTML = `
+          <div class="title">${s.stage} — ${s.percentage}% of Urea</div>
+          <div class="val">${s.urea_kg_ha} kg/ha (${s.urea_bags_50kg} bags)</div>
+          <div style="font-size:12px;color:#475569;margin-top:4px">${s.instruction}</div>
+        `;
+        splitsDiv.appendChild(row);
+      });
+      const pNote = document.createElement("div");
+      pNote.style.cssText = "font-size:12px;color:#166534;margin-top:8px;font-weight:600";
+      pNote.textContent = "DAP: " + dap.timing;
+      splitsDiv.appendChild(pNote);
+
+      document.getElementById("u-fert-science").textContent = data.science_note || "";
+      const adj = data.soil_adjustments || {};
+      const notes = [adj.N_adjustment, adj.P_adjustment, adj.K_note]
+        .concat(adj.pH_warnings || [])
+        .filter(Boolean)
+        .join(" ");
+      document.getElementById("u-fert-soil-notes").textContent = notes;
+
+      document.getElementById("res-box-fert").classList.add("highlight");
+      setTimeout(() => document.getElementById("res-box-fert").classList.remove("highlight"), 1200);
+    }
+
+    // Action 1: Predict Crop Suitability
+    async function runCropFromUnified() {
+      const btn = document.getElementById("btn-u-crop");
+      btn.disabled = true;
+      btn.innerText = "Analyzing Crops...";
+
+      const payload = buildUnifiedPayload();
+      try {
+        const res = await fetch("/predict", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) throw new Error((await res.json()).detail || "Failed to predict crop");
+        const data = await res.json();
+
+        renderCropCard(data);
+        document.getElementById("unified-results-container").style.display = "grid";
+        document.getElementById("res-box-crop").scrollIntoView({ behavior: "smooth", block: "nearest" });
+        if (data.primary_fertilizer) {
+          renderFertCard(data.primary_fertilizer);
+        } else if (data.crops_in_group && data.crops_in_group.length) {
+          await runFertFromUnified(data.crops_in_group[0]);
+        }
+      } catch (e) {
+        alert("Error: " + e.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = "<span>🌾</span> Recommend Crop";
+      }
+    }
+
+    async function runFertFromUnified(cropOverride) {
+      const btn = document.getElementById("btn-u-fert");
+      btn.disabled = true;
+      btn.innerText = "Calculating Urea + DAP...";
+
+      const payload = buildFertilizerPayload(cropOverride);
+      try {
+        const res = await fetch("/recommend-crop-fertilizer", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) throw new Error((await res.json()).detail || "Failed to recommend fertilizer");
+        const data = await res.json();
+
+        renderFertCard(data);
+        document.getElementById("unified-results-container").style.display = "grid";
+        document.getElementById("res-box-fert").scrollIntoView({ behavior: "smooth", block: "nearest" });
+      } catch (e) {
+        alert("Error: " + e.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = "<span>🧪</span> Recommend Fertilizer (Urea + DAP)";
+      }
+    }
+
+    // Initial baseline setup on load
+    window.addEventListener("DOMContentLoaded", () => {
+      onRegionChange();
+    });
+  </script>
+</body>
+
 </html>
