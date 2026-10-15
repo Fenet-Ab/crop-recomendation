@@ -39,6 +39,7 @@ model = None
 scaler = None
 le = None
 feature_cols = None
+MODELS_LOADED = False
 
 GROUP_CROPS = {
     "Major_Cereals": ["Teff", "Maize", "Wheat", "Barley"],
@@ -196,6 +197,7 @@ def load_models():
 
         print(f"Feature columns ({len(feature_cols)}): {feature_cols}")
         print("All models loaded successfully!")
+        MODELS_LOADED = True
         try:
             from src.seed import seed_data
 
@@ -204,8 +206,17 @@ def load_models():
         except Exception as db_exc:
             print(f"Farmer DB not available yet: {db_exc}")
     except Exception as e:
+        # Do not crash the whole process — allow the app to start so health
+        # checks and admin endpoints are available. Prediction endpoints will
+        # return 500 until model artifacts are uploaded to `models/`.
+        MODELS_LOADED = False
         print(f"CRITICAL: Failed to load models: {e}")
-        raise RuntimeError(f"Model loading failed: {e}")
+        print(
+            "Models not found. Place the following files under ./models/: best_crop_model.pkl, scaler_merged.pkl, label_encoder_merged.pkl"
+        )
+        print(f"Looking in: {MODELS_DIR.absolute()}")
+        # keep exception from bubbling so the server can start; endpoints will
+        # check `model is None` and return appropriate errors.
 
 
 @app.exception_handler(RequestValidationError)
@@ -309,6 +320,10 @@ class CropFertilizerRequestModel(BaseModel):
     soil_SOC_pct: float = Field(2.0, ge=0.1, le=10.0, description="Soil Organic Carbon %", example=2.0)
     strategy: str = Field("balanced", description="Fertilizer strategy: low | balanced | high", example="balanced")
     adm1: str = Field("Oromia", description="Administrative Region", example="Oromia")
+    temperature: Optional[float] = Field(None, description="Average temperature °C")
+    humidity: Optional[float] = Field(None, description="Relative humidity %")
+    rainfall: Optional[float] = Field(None, description="Rainfall proxy")
+    altitude_m: Optional[float] = Field(None, description="Altitude meters")
 
 
 def fertilizer_from_soil(crop: str, input_data: CropInput, strategy: str = "balanced") -> dict:
@@ -322,6 +337,10 @@ def fertilizer_from_soil(crop: str, input_data: CropInput, strategy: str = "bala
         soil_SOC_pct=input_data.soil_SOC or 2.0,
         strategy=strategy,
         adm1=input_data.adm1 or "Oromia",
+        temperature=input_data.temperature,
+        humidity=input_data.humidity,
+        rainfall=input_data.rainfall,
+        altitude_m=input_data.altitude_m,
     )
 
 
@@ -339,6 +358,10 @@ def recommend_crop_fertilizer(req: CropFertilizerRequestModel):
             soil_SOC_pct=req.soil_SOC_pct,
             strategy=req.strategy,
             adm1=req.adm1,
+            temperature=req.temperature,
+            humidity=req.humidity,
+            rainfall=req.rainfall,
+            altitude_m=req.altitude_m,
         )
         return result
     except Exception as e:
@@ -437,7 +460,8 @@ def health():
     return {
         "status": "healthy" if model is not None else "crop model not loaded",
         "crop_model_loaded": model is not None,
-        "fertilizer_model_engine": wheat_service.model is not None and "ml_model" or "empirical_trial_prior",
+        "fertilizer_model_engine": "ml_fertilizer_rate" if crop_fertilizer_recommender.rate_model_loaded else "agronomic_rules",
+        "fertilizer_rate_model_loaded": crop_fertilizer_recommender.rate_model_loaded,
         "n_crop_features": len(feature_cols) if feature_cols else 0,
     }
 
