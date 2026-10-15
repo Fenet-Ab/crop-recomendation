@@ -197,7 +197,12 @@ Always start from the **project root** (so `static/` and `models/` resolve corre
 
 ```bash
 source venv/bin/activate
+# Local dev:
 uvicorn src.app:app --reload --host 127.0.0.1 --port 8000
+
+# On Render (or other PaaS) set the service start command to use the
+# platform-provided $PORT. You can use the included helper script:
+bash start.sh
 ```
 
 Open: [http://127.0.0.1:8000/](http://127.0.0.1:8000/)
