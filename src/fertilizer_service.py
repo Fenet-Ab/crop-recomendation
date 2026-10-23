@@ -669,6 +669,76 @@ class CropFertilizerRecommender:
     DAP_N_CONTENT  = 0.18          # 18% N (co-nutrient in DAP)
     BAG_KG         = 50.0          # Standard Ethiopian fertiliser bag
 
+    def __init__(self, use_ml: bool = True):
+        self.rate_model = None
+        self.rate_meta: Dict[str, Any] = {}
+        self.rate_model_loaded = False
+        if use_ml:
+            self._load_rate_model()
+
+    def _load_rate_model(self) -> None:
+        path = MODELS_DIR / "fertilizer_rate_model.pkl"
+        meta_path = MODELS_DIR / "fertilizer_rate_metadata.json"
+        if joblib and path.exists():
+            try:
+                bundle = joblib.load(path)
+                if isinstance(bundle, dict):
+                    self.rate_model = bundle.get("model")
+                    self.rate_meta = {k: v for k, v in bundle.items() if k != "model"}
+                else:
+                    self.rate_model = bundle
+                self.rate_model_loaded = self.rate_model is not None
+                if self.rate_model_loaded:
+                    print(f"[EthioSoil] Loaded fertilizer rate model from {path}")
+            except Exception as e:
+                print(f"[EthioSoil] Warning: Could not load fertilizer rate model: {e}")
+                self.rate_model = None
+                self.rate_model_loaded = False
+        if meta_path.exists():
+            try:
+                with open(meta_path, "r", encoding="utf-8") as f:
+                    file_meta = json.load(f)
+                self.rate_meta = {**file_meta, **self.rate_meta}
+            except Exception:
+                pass
+
+    def _predict_np_ml(
+        self,
+        crop_key: str,
+        soil_N_ppm: float,
+        soil_P_ppm: float,
+        soil_K_ppm: float,
+        soil_pH: float,
+        soil_SOC_pct: float,
+        temperature: Optional[float],
+        humidity: Optional[float],
+        rainfall: Optional[float],
+        altitude_m: Optional[float],
+    ) -> Optional[Tuple[float, float]]:
+        if not self.rate_model_loaded or self.rate_model is None:
+            return None
+        numeric = self.rate_meta.get("numeric_features") or [
+            "soil_N_ppm", "soil_P_ppm", "soil_K_ppm", "soil_pH", "soil_SOC_pct",
+            "temperature", "humidity", "rainfall", "altitude_m",
+        ]
+        row = {
+            "soil_N_ppm": soil_N_ppm,
+            "soil_P_ppm": soil_P_ppm,
+            "soil_K_ppm": soil_K_ppm,
+            "soil_pH": soil_pH,
+            "soil_SOC_pct": soil_SOC_pct,
+            "temperature": 18.0 if temperature is None else temperature,
+            "humidity": 60.0 if humidity is None else humidity,
+            "rainfall": 25.0 if rainfall is None else rainfall,
+            "altitude_m": 2200.0 if altitude_m is None else altitude_m,
+            "crop": crop_key,
+        }
+        X = pd.DataFrame([{k: row.get(k) for k in list(numeric) + ["crop"]}])
+        pred = np.asarray(self.rate_model.predict(X), dtype=float).reshape(-1)
+        if pred.size < 2:
+            return None
+        return float(max(0.0, pred[0])), float(max(0.0, pred[1]))
+
     def recommend(
         self,
         crop: str,
@@ -679,6 +749,11 @@ class CropFertilizerRecommender:
         soil_SOC_pct: float = 2.0,
         strategy: str = "balanced",   # "low" | "balanced" | "high"
         adm1: str = "Oromia",
+        temperature: Optional[float] = None,
+        humidity: Optional[float] = None,
+        rainfall: Optional[float] = None,
+        altitude_m: Optional[float] = None,
+        use_ml: Optional[bool] = None,
     ) -> Dict[str, Any]:
         """Return full Urea + DAP recommendation for the given crop and soil state."""
 
@@ -689,6 +764,22 @@ class CropFertilizerRecommender:
             # Generic fallback
             req = CROP_NUTRIENT_REQUIREMENTS["Wheat"]
             crop_key = "Wheat (generic)"
+
+        want_ml = self.rate_model_loaded if use_ml is None else bool(use_ml and self.rate_model_loaded)
+        ml_np = None
+        if want_ml:
+            ml_np = self._predict_np_ml(
+                crop_key=crop_key if crop_key != "Wheat (generic)" else "Wheat",
+                soil_N_ppm=soil_N_ppm,
+                soil_P_ppm=soil_P_ppm,
+                soil_K_ppm=soil_K_ppm,
+                soil_pH=soil_pH,
+                soil_SOC_pct=soil_SOC_pct,
+                temperature=temperature,
+                humidity=humidity,
+                rainfall=rainfall,
+                altitude_m=altitude_m,
+            )
 
         # ── 2. Base nutrient rates from strategy ───────────────────────────
         if strategy == "low":
@@ -738,6 +829,31 @@ class CropFertilizerRecommender:
             P_adj_reason = f"Soil P is critically low ({soil_P_ppm:.0f} ppm). Increase DAP by 25%."
 
         P_rec = max(0.0, P_target * P_adj_factor)
+
+        source = "agronomic_rules"
+        if ml_np is not None:
+            N_ml, P_ml = ml_np
+            n_lo, n_hi = req["N_base"] * 0.45, req["N_max"] * 1.15
+            p_lo, p_hi = req["P_base"] * 0.45, req["P_max"] * 1.15
+            N_rec = float(np.clip(N_ml, n_lo, n_hi))
+            P_rec = float(np.clip(P_ml, p_lo, p_hi))
+            if strategy == "low":
+                N_rec *= 0.85
+                P_rec *= 0.90
+            elif strategy == "high":
+                N_rec = min(req["N_max"] * 1.05, N_rec * 1.12)
+                P_rec = min(req["P_max"] * 1.05, P_rec * 1.10)
+            if req["is_legume"]:
+                N_rec = min(N_rec, req["N_max"])
+            source = "ml_fertilizer_model"
+            N_adj_reason = (
+                f"N rate predicted by the fertilizer model from soil N ({soil_N_ppm:.0f} mg/kg), "
+                f"SOC ({soil_SOC_pct:.1f}%) and crop={crop_key}."
+            )
+            P_adj_reason = (
+                f"P rate predicted by the fertilizer model from soil P ({soil_P_ppm:.0f} ppm) "
+                f"and crop={crop_key}."
+            )
 
         # ── 5. pH warnings ──────────────────────────────────────────────────
         ph_warnings = []
@@ -792,6 +908,7 @@ class CropFertilizerRecommender:
             "crop": crop_key,
             "strategy": strategy,
             "region": adm1,
+            "source": source,
             "nutrient_targets": {
                 "N_recommended_kg_ha": round(N_rec, 1),
                 "P_recommended_kg_ha": round(P_rec, 1),
